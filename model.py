@@ -11,22 +11,22 @@ class DCGAN(object):
         self.sess = sess
 
         # Save the config settings as instance variables
-        self.training = config.training
-        self.crop = config.crop
         self.c = config.c
+        self.beta = config.beta
+        self.crop = config.crop
+        self.epoch = config.epoch
+        self.dbname = config.dbname
         self.chk_dir = config.chk_dir
         self.smp_dir = config.smp_dir
-        self.dbname = config.dbname
-        self.beta = config.beta
-        self.epoch = config.epoch
+        self.z_dim = config.test_size
+        self.training = config.training
         self.batch_size = config.batch_size
         self.sample_num = config.batch_size
-        self.z_dim = config.test_size
 
-        # Setup the dimensions for the generator/discriminator
-        self.gfc_dim = self.dfc_dim = 1024
         # TODO: Figure out what this variable is for
         self.gf_dim = self.df_dim = 64
+        # Setup the dimensions for the generator/discriminator
+        self.gfc_dim = self.dfc_dim = 1024
 
         # Create the batch normalization layers ahead of time
         self.d_bn1 = BatchNorm(name = 'd_bn1')
@@ -73,7 +73,6 @@ class DCGAN(object):
 
         self.inputs = tf.placeholder(tf.float32, [self.batch_size] + image_dims, name = 'real_images')
         self.z = tf.placeholder(tf.float32, [None, self.z_dim], name = 'z')
-        self.z_sum = tf.summary.histogram("z", self.z)
 
         self.G = self.generator(self.z, self.y)
         self.D, self.D_logits = self.discriminator(self.inputs, self.y)
@@ -117,14 +116,8 @@ class DCGAN(object):
             else:
                 sample_inputs = np.array(sample).astype(np.float32)
 
-        counter = 1
         start_time = time.time()
-        could_load, checkpoint_counter = self.load()
-        if could_load:
-            counter = checkpoint_counter
-            print(" [*] Load SUCCESS")
-        else:
-            print(" [!] Load failed...")
+        counter = self.load()
 
         for epoch in xrange(self.epoch):
 
@@ -327,9 +320,8 @@ class DCGAN(object):
     def load(self):
 
         import re
-        print(" [*] Reading checkpoints...")
-        chk_dir = os.path.join(self.chk_dir, self.model_dir)
 
+        chk_dir = os.path.join(self.chk_dir, self.model_dir)
         ckpt = tf.train.get_checkpoint_state(chk_dir)
 
         if ckpt and ckpt.model_checkpoint_path:
@@ -337,10 +329,10 @@ class DCGAN(object):
             ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
             self.saver.restore(self.sess, os.path.join(chk_dir, ckpt_name))
             counter = int(next(re.finditer("(\d+)(?!.*\d)", ckpt_name)).group(0))
-            print(" [*] Success to read {}".format(ckpt_name))
-            return True, counter
+            print(" [*] Loaded {} successfully".format(ckpt_name))
+            return counter
 
         else:
 
-            print(" [*] Failed to find a checkpoint")
-            return False, 0
+            print(" [*] No checkpoint found")
+            return 1
