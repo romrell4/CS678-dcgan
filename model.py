@@ -138,6 +138,8 @@ class DCGAN(object):
 
             for i in xrange(0, batch_idxs):
 
+                batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
+
                 if self.dbname == 'mnist':
                     batch_images = self.data_x[i * self.batch_size:(i + 1) * self.batch_size]
                     batch_labels = self.data_y[i * self.batch_size:(i + 1) * self.batch_size]
@@ -153,38 +155,54 @@ class DCGAN(object):
                     else:
                         batch_images = np.array(batch).astype(np.float32)
 
-                batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
+                # if self.dbname == 'mnist':
+                #     self.sess.run([d_opt], feed_dict = {self.inputs: batch_images, self.z: batch_z, self.y: batch_labels, })
+                #     self.sess.run([g_opt], feed_dict = {self.z: batch_z, self.y: batch_labels, })
+                #     self.sess.run([g_opt], feed_dict = {self.z: batch_z, self.y: batch_labels})
+
+                #     errD_fake = self.d_loss_fake.eval({self.z: batch_z, self.y: batch_labels})
+                #     errD_real = self.d_loss_real.eval({self.inputs: batch_images, self.y: batch_labels})
+                #     errG = self.g_loss.eval({self.z: batch_z, self.y: batch_labels})
+
+                # else:
+                #     self.sess.run([d_opt], feed_dict = {self.inputs: batch_images, self.z: batch_z})
+                #     self.sess.run([g_opt], feed_dict = {self.z: batch_z})
+                #     self.sess.run([g_opt], feed_dict = {self.z: batch_z})
+
+                #     errD_fake = self.d_loss_fake.eval({self.z: batch_z})
+                #     errD_real = self.d_loss_real.eval({self.inputs: batch_images})
+                #     errG = self.g_loss.eval({self.z: batch_z})
+
+                d_dict = {self.inputs: batch_images, self.z: batch_z}
+                g_dict = {self.z: batch_z}
+                x_dict = {self.inputs: batch_images}
 
                 if self.dbname == 'mnist':
-                    self.sess.run([d_opt], feed_dict = {self.inputs: batch_images, self.z: batch_z, self.y: batch_labels, })
-                    self.sess.run([g_opt], feed_dict = {self.z: batch_z, self.y: batch_labels, })
-                    self.sess.run([g_opt], feed_dict = {self.z: batch_z, self.y: batch_labels})
+                    d_dict[self.y] = batch_labels
+                    g_dict[self.y] = batch_labels
+                    x_dict[self.y] = batch_labels
 
-                    errD_fake = self.d_loss_fake.eval({self.z: batch_z, self.y: batch_labels})
-                    errD_real = self.d_loss_real.eval({self.inputs: batch_images, self.y: batch_labels})
-                    errG = self.g_loss.eval({self.z: batch_z, self.y: batch_labels})
+                self.sess.run([d_opt], feed_dict = d_dict)
+                self.sess.run([g_opt], feed_dict = g_dict)
+                self.sess.run([g_opt], feed_dict = g_dict)
 
-                else:
-                    self.sess.run([d_opt], feed_dict = {self.inputs: batch_images, self.z: batch_z})
-                    self.sess.run([g_opt], feed_dict = {self.z: batch_z})
-                    self.sess.run([g_opt], feed_dict = {self.z: batch_z})
-
-                    errD_fake = self.d_loss_fake.eval({self.z: batch_z})
-                    errD_real = self.d_loss_real.eval({self.inputs: batch_images})
-                    errG = self.g_loss.eval({self.z: batch_z})
+                errD_fake = self.d_loss_fake.eval(g_dict)
+                errD_real = self.d_loss_real.eval(x_dict)
+                errG = self.g_loss.eval(g_dict)
 
                 counter += 1
                 print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, i, batch_idxs, time.time() - start_time, errD_fake + errD_real, errG))
 
                 if np.mod(counter, 100) == 1:
+
+                    d = {self.z: sample_z, self.inputs: sample_inputs}
+
                     if self.dbname == 'mnist':
-                        samples, d_loss, g_loss = self.sess.run([self.sampler, self.d_loss, self.g_loss], feed_dict = {self.z: sample_z, self.inputs: sample_inputs, self.y: sample_labels, })
-                        save_images(samples, image_manifold_size(samples.shape[0]), './{}/train_{:02d}_{:04d}.png'.format(self.smp_dir, epoch, i))
-                        print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
-                    else:
-                        samples, d_loss, g_loss = self.sess.run([self.sampler, self.d_loss, self.g_loss], feed_dict = {self.z: sample_z, self.inputs: sample_inputs, }, )
-                        save_images(samples, image_manifold_size(samples.shape[0]), './{}/train_{:02d}_{:04d}.png'.format(self.smp_dir, epoch, i))
-                        print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
+                        d[self.y] = sample_labels
+
+                    samples, d_loss, g_loss = self.sess.run([self.sampler, self.d_loss, self.g_loss], feed_dict=d)
+                    save_images(samples, image_manifold_size(samples.shape[0]), './{}/train_{:02d}_{:04d}.png'.format(self.smp_dir, epoch, i))
+                    print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
 
                 if np.mod(counter, 500) == 2:
                     self.save(self.chk_dir, counter)
