@@ -75,8 +75,8 @@ class DCGAN(object):
         self.z_sum = tf.summary.histogram("z", self.z)
 
         self.G = self.generator(self.z, self.y)
-        self.D, self.D_logits = self.discriminator(self.inputs, self.y, reuse = False)
-        self.sampler = self.generator(self.z, self.y, train = False)
+        self.D, self.D_logits = self.discriminator(self.inputs, self.y)
+        self.sampler = self.generator(self.z, self.y, reuse = True)
         self.D_, self.D_logits_ = self.discriminator(self.G, self.y, reuse = True)
 
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels = tf.ones_like(self.D), logits = self.D_logits))
@@ -220,16 +220,18 @@ class DCGAN(object):
 
                 return tf.nn.sigmoid(h4), h4
 
-    def generator(self, z, y = None, train = True):
+    def generator(self, z, y = None, reuse = False):
 
-        get_shape = lambda x, y: int(math.ceil(float(x) / float(y)))
+        def get_shape(x, y):
+            return int(math.ceil(float(x) / float(y)))
 
         with tf.variable_scope("generator") as scope:
 
-            if not train:
+            if reuse:
                 scope.reuse_variables()
 
-            # TODO: Use dbname == "mnist" instead
+            train = not reuse
+
             if self.dbname == "mnist":
                 # TODO: Use the lambda above to round up instead of cast to int which rounds down
                 s_dim = self.out_dim
