@@ -11,13 +11,14 @@ class DCGAN(object):
         self.sess = sess
 
         # Save the config settings as instance variables
-        # TODO: Is there a reason why we don't just save self.config = config? Then we wouldn't have to redeclare everything?
         self.training = config.training
         self.crop = config.crop
         self.c = config.c
         self.chk_dir = config.chk_dir
         self.smp_dir = config.smp_dir
         self.dbname = config.dbname
+        self.beta = config.beta
+        self.epoch = config.epoch
         self.batch_size = config.batch_size
         self.sample_num = config.batch_size
         self.z_dim = config.test_size
@@ -53,7 +54,7 @@ class DCGAN(object):
         self.build_model()
 
         if self.training:
-            self.train(config)
+            self.train()
         else:
             if not self.load():
                 raise Exception("[!] Train a model first, then run test mode")
@@ -92,10 +93,10 @@ class DCGAN(object):
 
         self.saver = tf.train.Saver()
 
-    def train(self, config):
+    def train(self):
 
-        d_opt = tf.train.AdamOptimizer(self.c, beta1 = config.beta).minimize(self.d_loss, var_list = self.d_vars)
-        g_opt = tf.train.AdamOptimizer(self.c, beta1 = config.beta).minimize(self.g_loss, var_list = self.g_vars)
+        d_opt = tf.train.AdamOptimizer(self.c, beta1 = self.beta).minimize(self.d_loss, var_list = self.d_vars)
+        g_opt = tf.train.AdamOptimizer(self.c, beta1 = self.beta).minimize(self.g_loss, var_list = self.g_vars)
 
         tf.global_variables_initializer().run()
 
@@ -103,7 +104,7 @@ class DCGAN(object):
 
         sample_z = np.random.uniform(-1, 1, size = (self.sample_num, self.z_dim))
 
-        if config.dbname == 'mnist':
+        if self.dbname == 'mnist':
             sample_inputs = self.data_x[0:self.sample_num]
             sample_labels = self.data_y[0:self.sample_num]
         else:
@@ -124,24 +125,24 @@ class DCGAN(object):
         else:
             print(" [!] Load failed...")
 
-        for epoch in xrange(config.epoch):
+        for epoch in xrange(self.epoch):
 
-            if config.dbname == 'mnist':
-                batch_idxs = len(self.data_x) // config.batch_size
+            if self.dbname == 'mnist':
+                batch_idxs = len(self.data_x) // self.batch_size
 
             else:
                 # TODO: Is the duplicate code? Didn't we already do this above?
-                self.data = glob(os.path.join("./data", config.dbname, "*.jpg"))
-                batch_idxs = len(self.data) // config.batch_size
+                self.data = glob(os.path.join("./data", self.dbname, "*.jpg"))
+                batch_idxs = len(self.data) // self.batch_size
 
             for i in xrange(0, batch_idxs):
 
-                if config.dbname == 'mnist':
-                    batch_images = self.data_x[i * config.batch_size:(i + 1) * config.batch_size]
-                    batch_labels = self.data_y[i * config.batch_size:(i + 1) * config.batch_size]
+                if self.dbname == 'mnist':
+                    batch_images = self.data_x[i * self.batch_size:(i + 1) * self.batch_size]
+                    batch_labels = self.data_y[i * self.batch_size:(i + 1) * self.batch_size]
 
                 else:
-                    batch_files = self.data[i * config.batch_size:(i + 1) * config.batch_size]
+                    batch_files = self.data[i * self.batch_size:(i + 1) * self.batch_size]
                     batch = [get_image(batch_file, input_h = self.in_dim, input_w = self.in_dim, resize_h = self.out_dim,
                                        resize_w = self.out_dim, crop = self.crop, grayscale = self.grayscale) for batch_file in batch_files]
 
@@ -151,9 +152,9 @@ class DCGAN(object):
                     else:
                         batch_images = np.array(batch).astype(np.float32)
 
-                batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]).astype(np.float32)
+                batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
 
-                if config.dbname == 'mnist':
+                if self.dbname == 'mnist':
                     self.sess.run([d_opt], feed_dict = {self.inputs: batch_images, self.z: batch_z, self.y: batch_labels, })
                     self.sess.run([g_opt], feed_dict = {self.z: batch_z, self.y: batch_labels, })
                     self.sess.run([g_opt], feed_dict = {self.z: batch_z, self.y: batch_labels})
@@ -175,7 +176,7 @@ class DCGAN(object):
                 print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" % (epoch, i, batch_idxs, time.time() - start_time, errD_fake + errD_real, errG))
 
                 if np.mod(counter, 100) == 1:
-                    if config.dbname == 'mnist':
+                    if self.dbname == 'mnist':
                         samples, d_loss, g_loss = self.sess.run([self.sampler, self.d_loss, self.g_loss], feed_dict = {self.z: sample_z, self.inputs: sample_inputs, self.y: sample_labels, })
                         save_images(samples, image_manifold_size(samples.shape[0]), './{}/train_{:02d}_{:04d}.png'.format(self.smp_dir, epoch, i))
                         print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
@@ -185,7 +186,7 @@ class DCGAN(object):
                         print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
 
                 if np.mod(counter, 500) == 2:
-                    self.save(config.chk_dir, counter)
+                    self.save(self.chk_dir, counter)
 
     def discriminator(self, image, y = None, reuse = False):
 
