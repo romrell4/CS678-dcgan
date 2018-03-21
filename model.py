@@ -80,6 +80,7 @@ class DCGAN(object):
         self.sampler = self.generator(self.z, self.y, reuse = True)
         self.D_, self.D_logits_ = self.discriminator(self.G, self.y, reuse = True)
 
+        # TODO: Understand this
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels = tf.ones_like(self.D), logits = self.D_logits))
         self.d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels = tf.zeros_like(self.D_), logits = self.D_logits_))
         self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels = tf.ones_like(self.D_), logits = self.D_logits_))
@@ -199,18 +200,10 @@ class DCGAN(object):
                 yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
                 x = conv_cond_concat(image, yb)
 
-                h0 = lrelu(conv2d(x, self.c_dim + self.y_dim, name = 'd_h0_conv'))
-                h0 = conv_cond_concat(h0, yb)
-
-                h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim + self.y_dim, name = 'd_h1_conv')))
-                h1 = tf.reshape(h1, [self.batch_size, -1])
-                h1 = tf.concat([h1, y], 1)
-
-                h2 = lrelu(self.d_bn2(linear(h1, self.dfc_dim, 'd_h2_lin')))
-                h2 = tf.concat([h2, y], 1)
-
+                h0 = conv_cond_concat(lrelu(conv2d(x, self.c_dim + self.y_dim, name = 'd_h0_conv')), yb)
+                h1 = tf.concat([tf.reshape(lrelu(self.d_bn1(conv2d(h0, self.df_dim + self.y_dim, name = 'd_h1_conv'))), [self.batch_size, -1]), y], 1)
+                h2 = tf.concat([lrelu(self.d_bn2(linear(h1, self.dfc_dim, 'd_h2_lin'))), y], 1)
                 h3 = linear(h2, 1, 'd_h3_lin')
-
                 return tf.nn.sigmoid(h3), h3
             else:
                 h0 = lrelu(conv2d(image, self.df_dim, name = 'd_h0_conv'))
@@ -218,7 +211,6 @@ class DCGAN(object):
                 h2 = lrelu(self.d_bn2(conv2d(h1, self.df_dim * 4, name = 'd_h2_conv')))
                 h3 = lrelu(self.d_bn3(conv2d(h2, self.df_dim * 8, name = 'd_h3_conv')))
                 h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h4_lin')
-
                 return tf.nn.sigmoid(h4), h4
 
     def generator(self, z, y = None, reuse = False):
