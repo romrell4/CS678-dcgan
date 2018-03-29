@@ -148,24 +148,6 @@ class DCGAN(object):
                     else:
                         batch_images = np.array(batch).astype(np.float32)
 
-                # if self.dbname == 'mnist':
-                #     self.sess.run([d_opt], feed_dict = {self.inputs: batch_images, self.z: batch_z, self.y: batch_labels, })
-                #     self.sess.run([g_opt], feed_dict = {self.z: batch_z, self.y: batch_labels, })
-                #     self.sess.run([g_opt], feed_dict = {self.z: batch_z, self.y: batch_labels})
-
-                #     errD_fake = self.d_loss_fake.eval({self.z: batch_z, self.y: batch_labels})
-                #     errD_real = self.d_loss_real.eval({self.inputs: batch_images, self.y: batch_labels})
-                #     errG = self.g_loss.eval({self.z: batch_z, self.y: batch_labels})
-
-                # else:
-                #     self.sess.run([d_opt], feed_dict = {self.inputs: batch_images, self.z: batch_z})
-                #     self.sess.run([g_opt], feed_dict = {self.z: batch_z})
-                #     self.sess.run([g_opt], feed_dict = {self.z: batch_z})
-
-                #     errD_fake = self.d_loss_fake.eval({self.z: batch_z})
-                #     errD_real = self.d_loss_real.eval({self.inputs: batch_images})
-                #     errG = self.g_loss.eval({self.z: batch_z})
-
                 d_dict = {self.inputs: batch_images, self.z: batch_z}
                 g_dict = {self.z: batch_z}
                 x_dict = {self.inputs: batch_images}
