@@ -3,6 +3,9 @@ import tensorflow as tf
 from model import DCGAN
 from utils import visualize, check_dirs
 
+# python main.py --dbname mnist --training
+# python main.py --dbname celebA --training --crop
+
 # This is tensorflow wrapper around argparse, and is just allowing you to set the parameters from the command line
 f = tf.app.flags
 f.DEFINE_integer("epoch", 25, "Number of epochs [25]")
