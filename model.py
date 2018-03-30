@@ -157,6 +157,9 @@ class DCGAN(object):
                     g_dict[self.y] = batch_labels
                     x_dict[self.y] = batch_labels
 
+                # ORIGINAL: GD23
+
+                # self.sess.run([d_opt], feed_dict = d_dict)
                 self.sess.run([d_opt], feed_dict = d_dict)
                 self.sess.run([g_opt], feed_dict = g_dict)
                 self.sess.run([g_opt], feed_dict = g_dict)
